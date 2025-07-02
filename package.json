@@ -1,0 +1,41 @@
+{
+  "name": "chatstorm",
+  "version": "1.0.0",
+  "description": "ChatStorm - Real-Time Chat Server for Your App. ChatStorm is a powerful, lightning-fast Socket.io-based chat server that enables seamless real-time messaging in your application. Whether you're building a messaging app, live chat feature, or a collaborative platform, ChatStorm provides everything you need to handle one-on-one and group chats with ease",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "real-time-chat",
+    "socket-io",
+    "chat-server",
+    "realtime-messaging",
+    "socket-chat",
+    "chat-application",
+    "nodejs-chat",
+    "chat-api",
+    "private-messaging",
+    "real-time-communication",
+    "scalable-chat",
+    "messaging-service",
+    "live-chat",
+    "socket-io-chat",
+    "chat-backend",
+    "chat-system",
+    "instant-messaging",
+    "chat-server-socket",
+    "chatstorm"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk-animation": "^2.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.0.1",
+    "mongoose": "^8.16.1",
+    "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1"
+  }
+}
