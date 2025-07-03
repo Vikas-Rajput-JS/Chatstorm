@@ -12,6 +12,7 @@ module.exports = {
   validateUser: async (socket, next) => {
     try {
       const userId = socket.handshake.headers.token;
+      console.log(userId);
       if (!mongoose.Types.ObjectId.isValid(userId)) {
         return errorNotify(socket, socket, {
           message: "Invalid authorization token",
@@ -20,6 +21,7 @@ module.exports = {
       }
       let userData = await User.findOne();
       socket.userData = userData;
+      console.log(userData);
       let socketDetails = await Socket.findOne({ user: userId });
       if (!socketDetails) {
         await Socket.create({
