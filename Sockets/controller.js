@@ -12,16 +12,14 @@ module.exports = {
   validateUser: async (socket, next) => {
     try {
       const userId = socket.handshake.headers.token;
-      console.log(userId);
       if (!mongoose.Types.ObjectId.isValid(userId)) {
         return errorNotify(socket, socket, {
           message: "Invalid authorization token",
           success: false,
         });
       }
-      let userData = await User.findOne();
+      let userData = await User.findOne({ _id: userId });
       socket.userData = userData;
-      console.log(userData);
       let socketDetails = await Socket.findOne({ user: userId });
       if (!socketDetails) {
         await Socket.create({
@@ -126,13 +124,23 @@ module.exports = {
 
       io?.to(receivedSocket?.socket)?.emit("receive_message", {
         message: "Message received successfully",
-        data: { ...newMessage._doc, user: currentUser },
+        data: {
+          ...newMessage._doc,
+          user: currentUser,
+          senderDetails: socket?.userData,
+          receiverDetails: receiverUser,
+        },
         success: true,
       });
 
       io?.to(socket?.id)?.emit("message_sent", {
         message: "Message sent successfully",
-        data: { ...newMessage._doc, user: receiverId },
+        data: {
+          ...newMessage._doc,
+          user: receiverId,
+          senderDetails: socket?.userData,
+          receiverDetails: receiverUser,
+        },
         success: true,
       });
       let user = await User.findById(receivedSocket?.user);
@@ -174,10 +182,36 @@ module.exports = {
           receiverId: receiverUser?._id,
         });
       }
+      let filters = {};
+      if (keyword) {
+        filters = {
+          $or: [
+            {
+              "message.text": {
+                $regex: keyword,
+                $options: "i",
+              },
+            },
+            {
+              "message.media": {
+                $regex: keyword,
+                $options: "i",
+              },
+            },
+            {
+              "message.url": {
+                $regex: keyword,
+                $options: "i",
+              },
+            },
+          ],
+        };
+      }
       let messages = await Messages.aggregate([
         {
           $match: {
             chatId: existChat?._id,
+            // ...filters,
           },
         },
         {
@@ -214,7 +248,6 @@ module.exports = {
           },
         },
       ]);
-
       io?.to(socket?.id).emit("retrieve_message", {
         data: messages,
         success: true,
@@ -410,7 +443,6 @@ module.exports = {
   leaveCall: async (socket, io, data) => {
     try {
       let { userId } = data;
-      console.log(userId);
       const user = await Socket.findOne({ user: userId });
       if (user) {
         io.to(user.socket).emit("call-ended", {
