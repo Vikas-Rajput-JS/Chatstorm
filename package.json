@@ -1,6 +1,6 @@
 {
   "name": "chatstorm",
-  "version": "2.2.5",
+  "version": "2.3.5",
   "description": "ChatStorm - Real-Time Chat Server for Your App. ChatStorm is a powerful, lightning-fast Socket.io-based chat server that enables seamless real-time messaging in your application. Whether you're building a messaging app, live chat feature, or a collaborative platform, ChatStorm provides everything you need to handle one-on-one and group chats with ease",
   "main": "Sockets/config.js",
   "scripts": {

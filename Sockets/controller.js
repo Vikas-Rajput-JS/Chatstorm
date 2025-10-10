@@ -21,7 +21,11 @@ module.exports = {
         });
       }
       let userData = await User.findOne({ _id: userId });
-      console.log(userData);
+      console.log(
+        `${
+          userData?.name || userData?.fullName || userData?.username
+        } is Connected Successfully`
+      );
       socket.userData = userData;
       let socketDetails = await Socket.findOne({ user: userId });
       if (!socketDetails) {
