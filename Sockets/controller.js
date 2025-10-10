@@ -43,7 +43,7 @@ module.exports = {
       }
       next();
     } catch (error) {
-      animatelogger(error);
+      animatelogger(`${error}`);
     }
   },
 
