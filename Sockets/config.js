@@ -4,7 +4,7 @@ const animatelogger = require("../Config/rainbow");
 const mongoose = require("mongoose")
 require("dotenv").config();
 
-module.exports = async (server) => {
+module.exports = async (server,DB_URI) => {
   const io = socketIo(server, {
     cors: {
       origin: "*",
