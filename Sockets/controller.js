@@ -3,6 +3,7 @@ const User = require("../model/user.model");
 const Chat = require("../model/chat.model");
 const Messages = require("../model/messages.model");
 const Socket = require("../model/socket.model");
+const animatelogger = require("../Config/rainbow");
 const errorNotify = async (socket, io, error) => {
   console.log(error, "getting errors");
   io?.to(socket?.id).emit("error_notify", error);
@@ -12,6 +13,7 @@ module.exports = {
   validateUser: async (socket, next) => {
     try {
       const userId = socket.handshake.headers.token;
+      console.log(userId);
       if (!mongoose.Types.ObjectId.isValid(userId)) {
         return errorNotify(socket, socket, {
           message: "Invalid authorization token",
@@ -19,6 +21,7 @@ module.exports = {
         });
       }
       let userData = await User.findOne({ _id: userId });
+      console.log(userData);
       socket.userData = userData;
       let socketDetails = await Socket.findOne({ user: userId });
       if (!socketDetails) {
@@ -39,7 +42,9 @@ module.exports = {
         );
       }
       next();
-    } catch (error) {}
+    } catch (error) {
+      animatelogger(error);
+    }
   },
 
   joinChat: async (socket, io, data) => {
