@@ -1,7 +1,7 @@
 const socketIo = require("socket.io");
 const socketController = require("./controller");
 const animatelogger = require("../Config/rainbow");
-
+const mongoose = require("mongoose")
 require("dotenv").config();
 
 module.exports = async (server) => {
@@ -13,6 +13,9 @@ module.exports = async (server) => {
       credentials: true,
     },
   });
+  mongoose.connect(DB_URI).then((res)=>{
+    animatelogger("Socket DB Connected Successfully")
+  })
   animatelogger("Socket are connected successfully");
   
   io.use(socketController.validateUser);
