@@ -171,6 +171,24 @@ module.exports = {
       if (!mongoose.Types.ObjectId.isValid(receiverId)) {
         return errorNotify(socket, io, { message: "Invalid User" });
       }
+      await Messages.updateMany({
+        receiverId: receiverId,
+        senderId: currentUser,
+        isSeen: false,
+      }, {
+        $set: {
+          isSeen: true,
+        },
+      });
+      await Messages.updateMany({
+        senderId: receiverId,
+        receiverId: currentUser,
+        isSeen: false,
+      }, {
+        $set: {
+          isSeen: true,
+        },
+      });
       let receiverUser = await User.findById(receiverId);
       let existChat = await Chat.findOne({
         $or: [
@@ -271,6 +289,7 @@ module.exports = {
     try {
       let { keyword } = data;
       let userId = socket?.userData?._id;
+      let userIdObjectId = new mongoose.Types.ObjectId(userId);
       let pipiline = [
         {
           $match: {
@@ -304,6 +323,98 @@ module.exports = {
           $unwind: {
             path: "$receiverId",
             preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $lookup: {
+            from: "sockets",
+            localField: "senderId._id",
+            foreignField: "user",
+            as: "senderSocket",
+          },
+        },
+        {
+          $lookup: {
+            from: "sockets",
+            localField: "receiverId._id",
+            foreignField: "user",
+            as: "receiverSocket",
+          },
+        },
+        {
+          $unwind: {
+            path: "$senderSocket",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$receiverSocket",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            "senderId.isOnline": { $ifNull: ["$senderSocket.isOnline", false] },
+            "receiverId.isOnline": {
+              $ifNull: ["$receiverSocket.isOnline", false],
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "messages",
+            let: { 
+              chatId: "$_id",
+              currentUserId: userIdObjectId
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$chatId", "$$chatId"] },
+                      { $eq: ["$receiverId", "$$currentUserId"] },
+                      { $eq: ["$isSeen", false] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "unreadMessages",
+          },
+        },
+        {
+          $lookup: {
+            from: "messages",
+            let: { chatId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$chatId", "$$chatId"] },
+                      { $eq: ["$isSeen", false] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: "allMessages",
+          },
+        },
+        {
+          $addFields: {
+            unreadCount: { $size: "$unreadMessages" },
+            messageCount: { $size: "$allMessages" },
+          },
+        },
+        {
+          $project: {
+            senderSocket: 0,
+            receiverSocket: 0,
+            unreadMessages: 0,
+            allMessages: 0,
           },
         },
         {
@@ -498,6 +609,24 @@ module.exports = {
       });
     } catch (error) {
       errorNotify(socket, io, error);
+    }
+  },
+
+  checkOnlineStatus: async (socket, io, data) => {
+    let { receiverId } = data;
+    let socketUser = await Socket.findOne({ user: receiverId });
+    if (socketUser?.isOnline) {
+      io.to(socket.socket).emit("online_status", {
+        isOnline: true,
+        receiverId: receiverId,
+        message: "User is online",
+      });
+    } else {
+      io.to(socket.id).emit("online_status", {
+        isOnline: false,
+        receiverId: receiverId,
+        message: "User is offline",
+      });
     }
   },
 };

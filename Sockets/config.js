@@ -18,6 +18,7 @@ module.exports = async (server,DB_URI) => {
   })
   animatelogger("Socket are connected successfully");
   
+  
   io.use(socketController.validateUser);
   io.on("connection", (Socket) => {
     Socket.on("joinchat", async (data) =>
