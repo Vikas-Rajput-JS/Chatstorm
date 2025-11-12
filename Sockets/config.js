@@ -60,5 +60,11 @@ module.exports = async (server,DB_URI) => {
     Socket.on("disconnect_user", async (data) =>
       socketController.disconnectHandshake(Socket, io, data)
     );
+    Socket.on("check_online_status", async (data) =>
+      socketController.checkOnlineStatus(Socket, io, data)
+    );
+    Socket.on("leave_chat", async (data) =>
+      socketController.leaveChat(Socket, io, data)
+    );
   });
 };

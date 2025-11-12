@@ -13,6 +13,7 @@ module.exports = {
   validateUser: async (socket, next) => {
     try {
       const userId = socket.handshake.headers.token;
+      console.log(socket.handshake.headers);
       console.log(userId);
       if (!mongoose.Types.ObjectId.isValid(userId)) {
         return errorNotify(socket, socket, {
@@ -86,7 +87,34 @@ module.exports = {
       io?.to(socket.id).emit("handshake_success", {
         message: "Chat joinded successfully",
         success: true,
-        data: receiverUser,
+        data: {
+          _id: receiverUser?._id,
+          image: receiverUser?.image,
+          name: receiverUser?.name,
+          username: receiverUser?.username,
+          email: receiverUser?.email,
+          phone: receiverUser?.phone,
+          fullName: receiverUser?.fullName,
+          firstName: receiverUser?.firstName,
+          lastName: receiverUser?.lastName,
+          gender: receiverUser?.gender,
+          age: receiverUser?.age,
+          status: receiverUser?.status,
+          role: receiverUser?.role,
+          isDeleted: receiverUser?.isDeleted,
+        },
+      });
+      io?.to(findSocket?.socket).emit("chat_status", {
+        message: `${socket?.userData?.name} has joined the chat`,
+        isJoined: true,
+        data: {
+          _id: socket?.userData?._id,
+          image: socket?.userData?.image,
+          name: socket?.userData?.name,
+          username: socket?.userData?.username,
+          email: socket?.userData?.email,
+          phone: socket?.userData?.phone,
+        },
       });
     } catch (error) {
       errorNotify(socket, io, error);
@@ -135,9 +163,30 @@ module.exports = {
         message: "Message received successfully",
         data: {
           ...newMessage._doc,
-          user: currentUser,
-          senderDetails: socket?.userData,
-          receiverDetails: receiverUser,
+          user: {
+            _id: socket?.userData?._id,
+            image: socket?.userData?.image,
+            name: socket?.userData?.name,
+            username: socket?.userData?.username,
+            email: socket?.userData?.email,
+            phone: socket?.userData?.phone,
+          },
+          senderDetails: {
+            _id: socket?.userData?._id,
+            image: socket?.userData?.image,
+            name: socket?.userData?.name,
+            username: socket?.userData?.username,
+            email: socket?.userData?.email,
+            phone: socket?.userData?.phone,
+          },
+          receiverDetails: {
+            _id: receiverUser?._id,
+            image: receiverUser?.image,
+            name: receiverUser?.name,
+            username: receiverUser?.username,
+            email: receiverUser?.email,
+            phone: receiverUser?.phone,
+          },
         },
         success: true,
       });
@@ -146,13 +195,34 @@ module.exports = {
         message: "Message sent successfully",
         data: {
           ...newMessage._doc,
-          user: receiverId,
-          senderDetails: socket?.userData,
-          receiverDetails: receiverUser,
+          user: {
+            _id: receiverUser?._id,
+            image: receiverUser?.image,
+            name: receiverUser?.name,
+            username: receiverUser?.username,
+            email: receiverUser?.email,
+            phone: receiverUser?.phone,
+          },
+          senderDetails: {
+            _id: socket?.userData?._id,
+            image: socket?.userData?.image,
+            name: socket?.userData?.name,
+            username: socket?.userData?.username,
+            email: socket?.userData?.email,
+            phone: socket?.userData?.phone,
+          },
+          receiverDetails: {
+            _id: receiverUser?._id,
+            image: receiverUser?.image,
+            name: receiverUser?.name,
+            username: receiverUser?.username,
+            email: receiverUser?.email,
+            phone: receiverUser?.phone,
+          },
         },
         success: true,
       });
-      let user = await User.findById(receivedSocket?.user);
+      // let user = await User.findById(receivedSocket?.user);
       // if (user?.fcmToken) {
       //   await sendNotification(user?.fcmToken, {
       //     title: `${socket?.userData?.name} sent you a message`,
@@ -171,24 +241,30 @@ module.exports = {
       if (!mongoose.Types.ObjectId.isValid(receiverId)) {
         return errorNotify(socket, io, { message: "Invalid User" });
       }
-      await Messages.updateMany({
-        receiverId: receiverId,
-        senderId: currentUser,
-        isSeen: false,
-      }, {
-        $set: {
-          isSeen: true,
+      await Messages.updateMany(
+        {
+          receiverId: receiverId,
+          senderId: currentUser,
+          isSeen: false,
         },
-      });
-      await Messages.updateMany({
-        senderId: receiverId,
-        receiverId: currentUser,
-        isSeen: false,
-      }, {
-        $set: {
-          isSeen: true,
+        {
+          $set: {
+            isSeen: true,
+          },
+        }
+      );
+      await Messages.updateMany(
+        {
+          senderId: receiverId,
+          receiverId: currentUser,
+          isSeen: false,
         },
-      });
+        {
+          $set: {
+            isSeen: true,
+          },
+        }
+      );
       let receiverUser = await User.findById(receiverId);
       let existChat = await Chat.findOne({
         $or: [
@@ -272,6 +348,38 @@ module.exports = {
         {
           $sort: {
             createdAt: 1,
+          },
+        },
+        {
+          $project: {
+            message: {
+              text: 1,
+              media: 1,
+              url: 1,
+            },
+            senderId: {
+              _id: 1,
+              name: 1,
+              role: 1,
+              image: 1,
+              username: 1,
+              email: 1,
+              phoneNumber: 1,
+            },
+            receiverId: {
+              _id: 1,
+              name: 1,
+              role: 1,
+              image: 1,
+              username: 1,
+              email: 1,
+              phoneNumber: 1,
+            },
+            createdAt: 1,
+            updatedAt: 1,
+            chatId: 1,
+            isSeen: 1,
+            isDeleted: 1,
           },
         },
       ]);
@@ -364,9 +472,9 @@ module.exports = {
         {
           $lookup: {
             from: "messages",
-            let: { 
+            let: {
               chatId: "$_id",
-              currentUserId: userIdObjectId
+              currentUserId: userIdObjectId,
             },
             pipeline: [
               {
@@ -420,6 +528,33 @@ module.exports = {
         {
           $sort: {
             updatedAt: -1,
+          },
+        },
+        {
+          $project: {
+            senderId: {
+              _id: 1,
+              name: 1,
+              role: 1,
+              image: 1,
+              username: 1,
+              email: 1,
+              phoneNumber: 1,
+            },
+            receiverId: {
+              _id: 1,
+              name: 1,
+              role: 1,
+              image: 1,
+              username: 1,
+              email: 1,
+              phoneNumber: 1,
+            },
+            unreadCount: 1,
+            messageCount: 1,
+            updatedAt: 1,
+            createdAt: 1,
+            lastMessage: 1,
           },
         },
       ];
@@ -614,9 +749,11 @@ module.exports = {
 
   checkOnlineStatus: async (socket, io, data) => {
     let { receiverId } = data;
+    console.log(data);
     let socketUser = await Socket.findOne({ user: receiverId });
     if (socketUser?.isOnline) {
-      io.to(socket.socket).emit("online_status", {
+      console.log("sending online status");
+      io.to(socket.id).emit("online_status", {
         isOnline: true,
         receiverId: receiverId,
         message: "User is online",
@@ -627,6 +764,45 @@ module.exports = {
         receiverId: receiverId,
         message: "User is offline",
       });
+    }
+  },
+
+  leaveChat: async (socket, io, data) => {
+    try {
+      let { receiverId } = data;
+      let currentUser = socket?.userData?._id;
+      if (!mongoose.Types.ObjectId.isValid(receiverId)) {
+        return errorNotify(socket, io, { message: "Invalid User" });
+      }
+      let receiverUser = await User.findById(receiverId);
+      let findSocket = await Socket.findOne({ user: receiverId });
+
+      let existChat = await Chat.findOne({
+        $or: [
+          {
+            senderId: receiverUser?._id,
+            receiverId: new mongoose.Types.ObjectId(currentUser),
+          },
+          {
+            receiverId: receiverUser?._id,
+            senderId: new mongoose.Types.ObjectId(currentUser),
+          },
+        ],
+      });
+      if (!existChat) {
+        return errorNotify(socket, io, { message: "Chat not found" });
+      }
+
+      io?.to(socket.id).emit("chat_status", {
+        message: "Chat left successfully",
+        isLeft: true,
+      });
+      io?.to(findSocket?.socket).emit("chat_status", {
+        message: "User has left the chat",
+        isLeft: true,
+      });
+    } catch (error) {
+      errorNotify(socket, io, error);
     }
   },
 };

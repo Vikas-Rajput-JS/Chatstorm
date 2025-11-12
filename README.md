@@ -241,37 +241,289 @@ npm run dev
 
 | Event | Data | Description |
 |-------|------|-------------|
-| `joinchat` | `{receiverId}` | Join a chat with another user |
-| `send_message` | `{receiverId, message}` | Send a message to a user |
-| `chat_message` | `{receiverId, keyword?}` | Get chat history with a user |
-| `get_chatlist` | `{keyword?}` | Get list of all chats |
-| `delete_message` | `{messageId}` | Delete a specific message |
-| `user_typing` | `{receiverId, type}` | Send typing indicator (user_typing/stop_typing) |
-| `call-user` | `{userId, offer, type}` | Initiate a video call |
-| `answer-call` | `{userId, answer}` | Answer an incoming call |
-| `reject-call` | `{userId}` | Reject an incoming call |
-| `leave-call` | `{userId}` | Leave an active call |
-| `ice-candidate` | `{userId, candidate}` | Send ICE candidate for WebRTC |
+| `joinchat` | `{receiverId: string}` | Join a chat with another user |
+| `send_message` | `{receiverId: string, message: object}` | Send a message to a user |
+| `chat_message` | `{receiverId: string, keyword?: string}` | Get chat history with a user (automatically marks messages as seen) |
+| `get_chatlist` | `{keyword?: string}` | Get list of all chats with unread counts |
+| `delete_message` | `{messageId: string}` | Delete a specific message |
+| `user_typing` | `{receiverId: string, type: string}` | Send typing indicator (`user_typing` or `stop_typing`) |
+| `leave_chat` | `{receiverId: string}` | Leave a chat conversation |
+| `check_online_status` | `{receiverId: string}` | Check if a user is online |
+| `call-user` | `{userId: string, offer: object, type: string}` | Initiate a video call |
+| `answer-call` | `{userId: string, answer: object}` | Answer an incoming call |
+| `reject-call` | `{userId: string}` | Reject an incoming call |
+| `leave-call` | `{userId: string}` | Leave an active call |
+| `ice-candidate` | `{userId: string, candidate: object}` | Send ICE candidate for WebRTC |
 | `disconnect_user` | `{}` | Disconnect user session |
 
 ### Server → Client
 
 | Event | Data | Description |
 |-------|------|-------------|
-| `handshake_success` | `{message, success, data}` | Chat joined successfully |
-| `message_sent` | `{message, data, success}` | Message sent confirmation |
-| `receive_message` | `{message, data, success}` | Receive a new message |
-| `retrieve_message` | `{data, success, message}` | Chat history retrieved |
-| `chatlist` | `{data, message, success}` | Chat list received |
-| `message_update` | `{data, receiverId, success, message}` | Message updated (deleted) |
-| `message_update_receiver` | `{data, senderId, success, message}` | Message update notification for receiver |
-| `typing_alert` | `{data, message, success}` | Typing indicator received |
-| `incoming-call` | `{from, offer, type, user}` | Incoming call notification |
-| `call-answered` | `{answer}` | Call answered notification |
-| `call-ended` | `{userId}` | Call ended notification |
-| `ice-candidate` | `{candidate}` | ICE candidate received |
-| `leave` | `{message, success}` | Disconnect confirmation |
-| `error_notify` | `{message, success}` | Error notification |
+| `handshake_success` | `{message: string, success: boolean, data: UserObject}` | Chat joined successfully. Returns structured user data |
+| `chat_status` | `{message: string, isJoined?: boolean, isLeft?: boolean, data?: UserObject}` | Chat status update (user joined/left) |
+| `message_sent` | `{message: string, data: MessageObject, success: boolean}` | Message sent confirmation with structured user data |
+| `receive_message` | `{message: string, data: MessageObject, success: boolean}` | Receive a new message with structured user data |
+| `retrieve_message` | `{data: MessageArray, success: boolean, message: string}` | Chat history retrieved (messages marked as seen) |
+| `chatlist` | `{data: ChatArray, message: string, success: boolean}` | Chat list received with unread counts and structured user data |
+| `message_update` | `{data: MessageObject, receiverId: string, success: boolean, message: string}` | Message updated (deleted) - sender notification |
+| `message_update_receiver` | `{data: MessageObject, senderId: string, success: boolean, message: string}` | Message update notification for receiver |
+| `typing_alert` | `{data: {senderId: string, isTyping: boolean}, message: string, success: boolean}` | Typing indicator received |
+| `online_status` | `{isOnline: boolean, receiverId: string, message: string}` | Online status response |
+| `incoming-call` | `{from: string, offer: object, type: string, user: UserObject}` | Incoming call notification |
+| `call-answered` | `{answer: object}` | Call answered notification |
+| `call-ended` | `{userId: string}` | Call ended notification |
+| `ice-candidate` | `{candidate: object}` | ICE candidate received |
+| `leave` | `{message: string, success: boolean}` | Disconnect confirmation |
+| `error_notify` | `{message: string, success: boolean}` | Error notification |
+
+### Data Structures
+
+#### UserObject
+```typescript
+{
+  _id: string;
+  image?: string;
+  name?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: string;
+  age?: number;
+  status?: string;
+  role?: string;
+  isDeleted?: boolean;
+  isOnline?: boolean; // Only in chatlist
+  phoneNumber?: string; // Only in message responses
+}
+```
+
+#### MessageObject
+```typescript
+{
+  _id: string;
+  message: {
+    text?: string;
+    media?: string;
+    url?: string;
+  };
+  senderId: UserObject;
+  receiverId: UserObject;
+  chatId: string;
+  isSeen: boolean;
+  isDeleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  user: UserObject; // Current user context
+  senderDetails: UserObject;
+  receiverDetails: UserObject;
+}
+```
+
+#### ChatObject (in chatlist)
+```typescript
+{
+  _id: string;
+  senderId: UserObject;
+  receiverId: UserObject;
+  lastMessage: string;
+  unreadCount: number; // Count of unread messages for current user
+  messageCount: number; // Count of all unread messages (isSeen: false)
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### Important Notes
+
+- **Authentication**: All socket connections require a `token` header in the handshake with a valid MongoDB ObjectId
+- **Message Seen Status**: When `chat_message` is called, all messages between the users are automatically marked as `isSeen: true`
+- **Unread Count**: The `unreadCount` in chatlist represents messages where `receiverId` matches the current user and `isSeen: false`
+- **Message Count**: The `messageCount` in chatlist represents all messages in the chat where `isSeen: false`
+- **Online Status**: Users' online status is automatically tracked and included in chatlist responses
+
+---
+
+## 💡 Usage Examples
+
+### Client-Side Implementation
+
+```javascript
+import io from 'socket.io-client';
+
+// Connect to socket with authentication token
+const socket = io('http://localhost:3000', {
+  extraHeaders: {
+    token: 'YOUR_USER_ID' // MongoDB ObjectId
+  }
+});
+
+// Listen for connection
+socket.on('connect', () => {
+  console.log('Connected to ChatStorm');
+});
+
+// Join a chat
+socket.emit('joinchat', { receiverId: 'RECEIVER_USER_ID' });
+
+// Listen for join confirmation
+socket.on('handshake_success', (data) => {
+  console.log('Chat joined:', data);
+});
+
+// Listen for chat status updates (user joined/left)
+socket.on('chat_status', (data) => {
+  if (data.isJoined) {
+    console.log('User joined:', data.data);
+  } else if (data.isLeft) {
+    console.log('User left the chat');
+  }
+});
+
+// Send a message
+socket.emit('send_message', {
+  receiverId: 'RECEIVER_USER_ID',
+  message: {
+    text: 'Hello, how are you?'
+  }
+});
+
+// Listen for sent message confirmation
+socket.on('message_sent', (data) => {
+  console.log('Message sent:', data);
+});
+
+// Listen for received messages
+socket.on('receive_message', (data) => {
+  console.log('New message:', data);
+});
+
+// Get chat history (automatically marks messages as seen)
+socket.emit('chat_message', { 
+  receiverId: 'RECEIVER_USER_ID',
+  keyword: 'search term' // optional
+});
+
+// Listen for chat history
+socket.on('retrieve_message', (data) => {
+  console.log('Chat history:', data.data);
+});
+
+// Get chat list with unread counts
+socket.emit('get_chatlist', { keyword: 'search' }); // keyword is optional
+
+socket.on('chatlist', (data) => {
+  data.data.forEach(chat => {
+    console.log(`Chat with ${chat.senderId.name}: ${chat.unreadCount} unread messages`);
+  });
+});
+
+// Leave a chat
+socket.emit('leave_chat', { receiverId: 'RECEIVER_USER_ID' });
+
+socket.on('chat_status', (data) => {
+  if (data.isLeft) {
+    console.log('Left chat successfully');
+  }
+});
+
+// Check online status
+socket.emit('check_online_status', { receiverId: 'RECEIVER_USER_ID' });
+
+socket.on('online_status', (data) => {
+  console.log(`User is ${data.isOnline ? 'online' : 'offline'}`);
+});
+
+// Typing indicator
+socket.emit('user_typing', {
+  receiverId: 'RECEIVER_USER_ID',
+  type: 'user_typing' // or 'stop_typing'
+});
+
+socket.on('typing_alert', (data) => {
+  if (data.data.isTyping) {
+    console.log('User is typing...');
+  }
+});
+
+// Delete a message
+socket.emit('delete_message', { messageId: 'MESSAGE_ID' });
+
+socket.on('message_update', (data) => {
+  console.log('Message deleted:', data);
+});
+
+// Error handling
+socket.on('error_notify', (error) => {
+  console.error('Socket error:', error);
+});
+
+// Disconnect
+socket.emit('disconnect_user', {});
+socket.on('leave', (data) => {
+  console.log('Disconnected:', data);
+});
+```
+
+### React Example
+
+```javascript
+import { useEffect, useState } from 'react';
+import io from 'socket.io-client';
+
+function ChatComponent({ userId, receiverId }) {
+  const [socket, setSocket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    // Initialize socket connection
+    const newSocket = io('http://localhost:3000', {
+      extraHeaders: {
+        token: userId
+      }
+    });
+
+    setSocket(newSocket);
+
+    // Join chat
+    newSocket.emit('joinchat', { receiverId });
+
+    // Listen for messages
+    newSocket.on('receive_message', (data) => {
+      setMessages(prev => [...prev, data.data]);
+    });
+
+    // Listen for online status
+    newSocket.on('online_status', (data) => {
+      setIsOnline(data.isOnline);
+    });
+
+    // Cleanup
+    return () => {
+      newSocket.emit('leave_chat', { receiverId });
+      newSocket.close();
+    };
+  }, [userId, receiverId]);
+
+  const sendMessage = (text) => {
+    socket?.emit('send_message', {
+      receiverId,
+      message: { text }
+    });
+  };
+
+  return (
+    <div>
+      <div>Status: {isOnline ? '🟢 Online' : '🔴 Offline'}</div>
+      {/* Chat UI */}
+    </div>
+  );
+}
+```
 
 ---
 
