@@ -56,7 +56,6 @@ PORT=3000
 ### Basic Implementation
 
 ```javascript
-const mongoose = require("mongoose");
 const http = require("http");
 const cors = require("cors");
 const express = require("express");
@@ -77,19 +76,16 @@ app.get("/", (req, res) => {
 // Server setup
 let server;
 try {
-  mongoose.connect(process.env.MONGODB_URL).then(() => {
-    console.log("✅ Connected to MongoDB");
-    
-    // Create HTTP server
-    const nodeServer = http.createServer(app);
-    
-    // Initialize ChatStorm
-    ChatStorm(nodeServer);
-    
-    // Start server
-    server = nodeServer.listen(process.env.PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${process.env.PORT}`);
-    });
+  // Create HTTP server
+  const nodeServer = http.createServer(app);
+  
+  // Initialize ChatStorm with MongoDB URL
+  // ChatStorm will handle MongoDB connection internally
+  ChatStorm(nodeServer, process.env.MONGODB_URL);
+  
+  // Start server
+  server = nodeServer.listen(process.env.PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server running on port ${process.env.PORT}`);
   });
 } catch (error) {
   console.error("❌ Error:", error);
@@ -99,7 +95,6 @@ try {
 ### Complete Example
 
 ```javascript
-const mongoose = require("mongoose");
 const http = require("http");
 const cors = require("cors");
 const express = require("express");
@@ -129,16 +124,17 @@ app.get("/health", (req, res) => {
 // Server initialization
 let server;
 try {
-  mongoose.connect(process.env.MONGODB_URL).then(() => {
-    console.log("✅ Connected to MongoDB");
-    
-    const nodeServer = http.createServer(app);
-    ChatStorm(nodeServer);
-    
-    server = nodeServer.listen(process.env.PORT, "0.0.0.0", () => {
-      console.log(`🚀 ChatStorm server running on port ${process.env.PORT}`);
-      console.log(`📱 Access your chat server at: http://localhost:${process.env.PORT}`);
-    });
+  // Create HTTP server
+  const nodeServer = http.createServer(app);
+  
+  // Initialize ChatStorm with MongoDB URL
+  // ChatStorm will handle MongoDB connection internally
+  ChatStorm(nodeServer, process.env.MONGODB_URL);
+  
+  // Start server
+  server = nodeServer.listen(process.env.PORT, "0.0.0.0", () => {
+    console.log(`🚀 ChatStorm server running on port ${process.env.PORT}`);
+    console.log(`📱 Access your chat server at: http://localhost:${process.env.PORT}`);
   });
 } catch (error) {
   console.error("❌ Server initialization failed:", error);
@@ -169,6 +165,18 @@ process.on("SIGTERM", () => {
 ---
 
 ## 🔧 Configuration
+
+### ChatStorm Initialization
+
+```javascript
+ChatStorm(nodeServer, mongoDBUrl)
+```
+
+**Parameters:**
+- `nodeServer` (required): HTTP server instance created with `http.createServer()`
+- `mongoDBUrl` (required): MongoDB connection string
+
+**Note:** ChatStorm handles the MongoDB connection internally. You don't need to call `mongoose.connect()` separately.
 
 ### Environment Variables
 
