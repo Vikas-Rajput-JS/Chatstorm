@@ -171,6 +171,22 @@ module.exports = {
             email: socket?.userData?.email,
             phone: socket?.userData?.phone,
           },
+          senderId: {
+            _id: socket?.userData?._id,
+            image: socket?.userData?.image,
+            name: socket?.userData?.name,
+            username: socket?.userData?.username,
+            email: socket?.userData?.email,
+            phone: socket?.userData?.phone,
+          },
+          recieverId: {
+            _id: receiverUser?._id,
+            image: receiverUser?.image,
+            name: receiverUser?.name,
+            username: receiverUser?.username,
+            email: receiverUser?.email,
+            phone: receiverUser?.phone,
+          },
           senderDetails: {
             _id: socket?.userData?._id,
             image: socket?.userData?.image,
